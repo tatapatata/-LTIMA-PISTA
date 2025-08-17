@@ -1,238 +1,263 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Juego de Flores 🌻</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Juego para Zaye</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f9f9f9;
+      margin: 0;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      background: linear-gradient(135deg, #ffe6f0, #fff8e7);
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
+
     h1 {
-      margin: 10px;
+      font-size: 2rem;
+      color: #e91e63;
+      text-align: center;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px #fff;
+      animation: pulse 2s infinite;
     }
-    #board {
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .scoreboard {
+      background: white;
+      padding: 15px 25px;
+      border-radius: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      text-align: center;
+      margin-bottom: 20px;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    .progress-container {
+      background: #eee;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 12px;
+      margin-top: 10px;
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, #ff4081, #ff9800);
+      height: 100%;
+      width: 0%;
+      transition: width 0.5s ease-in-out;
+    }
+
+    .game-board {
       display: grid;
       grid-template-columns: repeat(8, 60px);
       grid-template-rows: repeat(8, 60px);
       gap: 5px;
-      margin-top: 20px;
+      margin: 20px auto;
+      perspective: 1000px;
     }
+
     .tile {
       width: 60px;
       height: 60px;
       display: flex;
-      align-items: center;
       justify-content: center;
-      font-size: 32px;
+      align-items: center;
+      font-size: 28px;
+      background: white;
+      border: 3px solid #333;
+      border-radius: 12px;
       cursor: pointer;
-      transition: transform 0.25s ease, top 0.3s ease;
-      position: relative;
+      user-select: none;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
-    #score {
-      margin-top: 15px;
-      font-size: 20px;
+
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
     }
-    #win {
-      margin-top: 20px;
-      font-size: 22px;
-      color: green;
-      font-weight: bold;
+
+    .fall {
+      animation: fall 0.6s ease forwards;
     }
+
+    @keyframes fall {
+      from { transform: translateY(-100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* 🌸 Decoración extra */
+    .flower-deco {
+      position: absolute;
+      font-size: 2rem;
+      opacity: 0.7;
+      animation: float 6s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(20deg); }
+    }
+
   </style>
 </head>
 <body>
-  <h1>🌸 Match de Flores 🌸</h1>
-  <div id="board"></div>
-  <div id="score">Puntos: 0 / 10000</div>
-  <div id="win"></div>
+  <h1>🌸 Juego para Zaye 🌸</h1>
+  <div class="scoreboard">
+    <div>Puntos: <span id="score">0</span> / 10000</div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+  </div>
+  
+  <div class="game-board" id="game-board"></div>
 
-<script>
-const boardSize = 8;
-const flowers = ["🌻","🌹","🌷","🌼","💮","🌺"];
-let board = [];
-let score = 0;
-const goal = 10000;
+  <!-- Decoraciones flotantes -->
+  <div class="flower-deco" style="top:10%; left:5%;">🌺</div>
+  <div class="flower-deco" style="top:20%; right:10%;">🌸</div>
+  <div class="flower-deco" style="bottom:15%; left:15%;">🌷</div>
+  <div class="flower-deco" style="bottom:20%; right:20%;">🌻</div>
 
-function createBoard() {
-  const boardDiv = document.getElementById("board");
-  boardDiv.innerHTML = "";
-  board = [];
-  for (let row = 0; row < boardSize; row++) {
-    const rowArr = [];
-    for (let col = 0; col < boardSize; col++) {
-      const tile = document.createElement("div");
-      tile.classList.add("tile");
-      tile.setAttribute("data-row", row);
-      tile.setAttribute("data-col", col);
-      tile.innerText = flowers[Math.floor(Math.random()*flowers.length)];
-      tile.addEventListener("click", tileClick);
-      boardDiv.appendChild(tile);
-      rowArr.push(tile);
-    }
-    board.push(rowArr);
-  }
-}
+  <script>
+    const boardSize = 8;
+    const flowers = ["🌸","🌻","🌷","🌼","💮"];
+    const board = document.getElementById("game-board");
+    let tiles = [];
+    let firstTile = null;
+    let score = 0;
 
-let firstTile = null;
-function tileClick(e) {
-  const tile = e.target;
-  if (!firstTile) {
-    firstTile = tile;
-    tile.style.transform = "scale(1.2)";
-  } else if (tile === firstTile) {
-    firstTile.style.transform = "scale(1)";
-    firstTile = null;
-  } else {
-    swapTiles(firstTile, tile);
-    firstTile.style.transform = "scale(1)";
-    firstTile = null;
-  }
-}
-
-function swapTiles(t1, t2) {
-  const r1 = parseInt(t1.getAttribute("data-row"));
-  const c1 = parseInt(t1.getAttribute("data-col"));
-  const r2 = parseInt(t2.getAttribute("data-row"));
-  const c2 = parseInt(t2.getAttribute("data-col"));
-
-  if (Math.abs(r1-r2)+Math.abs(c1-c2) !== 1) return; // solo adyacentes
-
-  // Intercambio
-  const temp = t1.innerText;
-  t1.innerText = t2.innerText;
-  t2.innerText = temp;
-
-  if (checkMatches()) {
-    processMatches();
-  } else {
-    // revertir si no hay match
-    setTimeout(()=>{
-      const tempBack = t1.innerText;
-      t1.innerText = t2.innerText;
-      t2.innerText = tempBack;
-    }, 300);
-  }
-}
-
-function checkMatches() {
-  let found = false;
-  // filas
-  for (let r=0;r<boardSize;r++) {
-    for (let c=0;c<boardSize-2;c++) {
-      const t1 = board[r][c].innerText;
-      const t2 = board[r][c+1].innerText;
-      const t3 = board[r][c+2].innerText;
-      if (t1 === t2 && t2 === t3) found = true;
-    }
-  }
-  // columnas
-  for (let c=0;c<boardSize;c++) {
-    for (let r=0;r<boardSize-2;r++) {
-      const t1 = board[r][c].innerText;
-      const t2 = board[r+1][c].innerText;
-      const t3 = board[r+2][c].innerText;
-      if (t1 === t2 && t2 === t3) found = true;
-    }
-  }
-  return found;
-}
-
-function processMatches() {
-  let matches = [];
-
-  // filas
-  for (let r=0;r<boardSize;r++) {
-    for (let c=0;c<boardSize-2;c++) {
-      const t1 = board[r][c];
-      const t2 = board[r][c+1];
-      const t3 = board[r][c+2];
-      if (t1.innerText && t1.innerText===t2.innerText && t2.innerText===t3.innerText) {
-        let combo = [t1,t2,t3];
-        let k=c+3;
-        while (k<boardSize && board[r][k].innerText===t1.innerText){
-          combo.push(board[r][k]);
-          k++;
+    function createBoard() {
+      tiles = [];
+      board.innerHTML = "";
+      for (let r = 0; r < boardSize; r++) {
+        let row = [];
+        for (let c = 0; c < boardSize; c++) {
+          let tile = document.createElement("div");
+          tile.classList.add("tile");
+          tile.dataset.row = r;
+          tile.dataset.col = c;
+          tile.textContent = flowers[Math.floor(Math.random() * flowers.length)];
+          tile.addEventListener("click", () => selectTile(tile));
+          board.appendChild(tile);
+          row.push(tile);
         }
-        matches.push(combo);
-        c=k-1;
+        tiles.push(row);
       }
     }
-  }
 
-  // columnas
-  for (let c=0;c<boardSize;c++) {
-    for (let r=0;r<boardSize-2;r++) {
-      const t1 = board[r][c];
-      const t2 = board[r+1][c];
-      const t3 = board[r+2][c];
-      if (t1.innerText && t1.innerText===t2.innerText && t2.innerText===t3.innerText) {
-        let combo = [t1,t2,t3];
-        let k=r+3;
-        while (k<boardSize && board[k][c].innerText===t1.innerText){
-          combo.push(board[k][c]);
-          k++;
-        }
-        matches.push(combo);
-        r=k-1;
+    function selectTile(tile) {
+      if (!firstTile) {
+        firstTile = tile;
+        tile.style.transform = "scale(1.2)";
+        return;
       }
+
+      if (firstTile === tile) {
+        firstTile.style.transform = "scale(1)";
+        firstTile = null;
+        return;
+      }
+
+      swapTiles(firstTile, tile);
+
+      if (!checkMatches()) {
+        swapTiles(firstTile, tile); // 🔄 revertir si no hay match
+      }
+
+      firstTile.style.transform = "scale(1)";
+      firstTile = null;
     }
-  }
 
-  if (matches.length>0) {
-    matches.forEach(combo=>{
-      let basePoints = 110;
-      let multiplier = combo.length-2; // 3=1x, 4=2x, etc.
-      score += Math.floor(basePoints*multiplier);
-      combo.forEach(tile=>tile.innerText="");
-    });
-    updateScore();
-    applyGravity();
-    setTimeout(()=>{
-      refillBoard();
-      if (checkMatches()) processMatches();
-    },300);
-  }
-}
+    function swapTiles(tile1, tile2) {
+      const temp = tile1.textContent;
+      tile1.textContent = tile2.textContent;
+      tile2.textContent = temp;
+    }
 
-function applyGravity() {
-  for (let c=0;c<boardSize;c++) {
-    for (let r=boardSize-1;r>=0;r--) {
-      if (board[r][c].innerText==="") {
-        for (let k=r-1;k>=0;k--) {
-          if (board[k][c].innerText!=="") {
-            board[r][c].innerText = board[k][c].innerText;
-            board[k][c].innerText = "";
-            break;
+    function checkMatches() {
+      let match = false;
+
+      // filas
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize - 2; c++) {
+          let t1 = tiles[r][c], t2 = tiles[r][c+1], t3 = tiles[r][c+2];
+          if (t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
+            [t1, t2, t3].forEach(t => { t.textContent = ""; });
+            match = true;
+            updateScore(100);
           }
         }
       }
-    }
-  }
-}
 
-function refillBoard() {
-  for (let r=0;r<boardSize;r++) {
-    for (let c=0;c<boardSize;c++) {
-      if (board[r][c].innerText==="") {
-        board[r][c].innerText = flowers[Math.floor(Math.random()*flowers.length)];
+      // columnas
+      for (let c = 0; c < boardSize; c++) {
+        for (let r = 0; r < boardSize - 2; r++) {
+          let t1 = tiles[r][c], t2 = tiles[r+1][c], t3 = tiles[r+2][c];
+          if (t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
+            [t1, t2, t3].forEach(t => { t.textContent = ""; });
+            match = true;
+            updateScore(100);
+          }
+        }
       }
+
+      if (match) {
+        setTimeout(dropTiles, 400);
+      }
+
+      return match;
     }
-  }
-}
 
-function updateScore() {
-  document.getElementById("score").innerText = `Puntos: ${score} / ${goal}`;
-  if (score>=goal) {
-    document.getElementById("win").innerHTML = 
-      `🎉 ¡Ganaste! <a href="https://open.spotify.com/" target="_blank">Escucha tu premio aquí</a>`;
-  }
-}
+    function dropTiles() {
+      for (let c = 0; c < boardSize; c++) {
+        let empty = [];
+        for (let r = boardSize - 1; r >= 0; r--) {
+          if (tiles[r][c].textContent === "") {
+            empty.push(r);
+          } else if (empty.length > 0) {
+            let newR = empty.shift();
+            tiles[newR][c].textContent = tiles[r][c].textContent;
+            tiles[r][c].textContent = "";
+            empty.push(r);
+          }
+        }
 
-createBoard();
-</script>
+        // rellenar arriba
+        for (let r = 0; r < boardSize; r++) {
+          if (tiles[r][c].textContent === "") {
+            tiles[r][c].textContent = flowers[Math.floor(Math.random() * flowers.length)];
+            tiles[r][c].classList.add("fall");
+            setTimeout(() => tiles[r][c].classList.remove("fall"), 600);
+          }
+        }
+      }
+
+      setTimeout(checkMatches, 400);
+    }
+
+    function updateScore(points) {
+      score += points;
+      document.getElementById("score").textContent = score;
+      const progress = Math.min((score / 10000) * 100, 100);
+      document.getElementById("progress-bar").style.width = progress + "%";
+    }
+
+    createBoard();
+  </script>
 </body>
 </html>
