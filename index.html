@@ -96,15 +96,6 @@
       to { transform: translateY(0); opacity: 1; }
     }
 
-    .fade-out {
-      animation: fadeOut 0.5s forwards;
-    }
-
-    @keyframes fadeOut {
-      from { opacity: 1; transform: scale(1); }
-      to { opacity: 0; transform: scale(0.5); }
-    }
-
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -122,15 +113,6 @@
       0%, 100% { transform: translateY(0) rotate(0deg); }
       50% { transform: translateY(-20px) rotate(20deg); }
     }
-
-    .winner {
-      font-size: 1.5rem;
-      margin-top: 20px;
-      text-align: center;
-      color: #d81b60;
-      animation: fadeIn 1s ease-in-out;
-    }
-
   </style>
 </head>
 <body>
@@ -150,8 +132,6 @@
   <div class="flower-deco" style="bottom:15%; left:15%;">🌷</div>
   <div class="flower-deco" style="bottom:20%; right:20%;">🌻</div>
 
-  <div id="winner-message" class="winner"></div>
-
   <script>
     const boardSize = 8;
     const flowers = ["🌸","🌻","🌷","🌼","💮"];
@@ -159,6 +139,7 @@
     let tiles = [];
     let firstTile = null;
     let score = 0;
+    let playlistShown = false; // para que solo se muestre una vez
 
     function createBoard() {
       tiles = [];
@@ -215,11 +196,8 @@
       for (let r = 0; r < boardSize; r++) {
         for (let c = 0; c < boardSize - 2; c++) {
           let t1 = tiles[r][c], t2 = tiles[r][c+1], t3 = tiles[r][c+2];
-          if (t1.textContent && t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
-            [t1, t2, t3].forEach(t => { 
-              t.classList.add("fade-out");
-              setTimeout(() => t.textContent = "", 500);
-            });
+          if (t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
+            [t1, t2, t3].forEach(t => { t.textContent = ""; });
             match = true;
             updateScore(100);
           }
@@ -230,11 +208,8 @@
       for (let c = 0; c < boardSize; c++) {
         for (let r = 0; r < boardSize - 2; r++) {
           let t1 = tiles[r][c], t2 = tiles[r+1][c], t3 = tiles[r+2][c];
-          if (t1.textContent && t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
-            [t1, t2, t3].forEach(t => { 
-              t.classList.add("fade-out");
-              setTimeout(() => t.textContent = "", 500);
-            });
+          if (t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
+            [t1, t2, t3].forEach(t => { t.textContent = ""; });
             match = true;
             updateScore(100);
           }
@@ -242,7 +217,7 @@
       }
 
       if (match) {
-        setTimeout(dropTiles, 600);
+        setTimeout(dropTiles, 400);
       }
 
       return match;
@@ -281,12 +256,11 @@
       const progress = Math.min((score / 10000) * 100, 100);
       document.getElementById("progress-bar").style.width = progress + "%";
 
-      if (score >= 10000) {
-        document.getElementById("winner-message").innerHTML = 
-          `🎉 ¡Felicidades Zaye! 🎉<br>
-          Aquí tienes tu playlist especial: <br>
-          <a href="https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&nd=1&dlsi=2eae3a6453e34fc8" 
-             target="_blank">🎵 Escuchar en Spotify</a>`;
+      // 🎵 Mostrar playlist al llegar a 10000
+      if (score >= 10000 && !playlistShown) {
+        playlistShown = true;
+        alert("🎉 ¡Felicidades Zaye! Aquí tienes tu playlist especial 💖");
+        window.open("https://open.spotify.com/playlist/xxxxxxxxxxxxxxxx", "_blank");
       }
     }
 
