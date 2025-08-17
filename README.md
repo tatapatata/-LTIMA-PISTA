@@ -2,261 +2,202 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>juego para zaye</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.dom.min.js"></script>
   <style>
     body {
+      background: linear-gradient(135deg, #fceabb, #f8b500);
       display: flex;
-      flex-direction: column;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
-      background: linear-gradient(135deg, #f9f7f7, #dbe9f4);
-      font-family: 'Comic Sans MS', cursive, sans-serif;
-      overflow: hidden;
+      margin: 0;
+      font-family: 'Comic Sans MS', cursive;
     }
-
-    h1 {
-      margin-bottom: 10px;
-      color: #333;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-    }
-
-    #gameBoard {
-      display: grid;
-      grid-template-columns: repeat(8, 60px);
-      grid-template-rows: repeat(8, 60px);
-      gap: 5px;
-      background: rgba(255,255,255,0.8);
-      padding: 10px;
+    canvas {
+      border: 8px solid #fff;
       border-radius: 20px;
-      box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
-      position: relative;
+      box-shadow: 0px 0px 30px rgba(255, 182, 193, 0.8);
     }
-
-    .flower {
-      width: 60px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      cursor: pointer;
-      user-select: none;
-      transition: transform 0.2s ease;
-    }
-
-    .flower:hover {
-      transform: scale(1.1);
-    }
-
-    .fade-out {
-      animation: fadeOut 0.6s forwards;
-    }
-
-    @keyframes fadeOut {
-      from { opacity: 1; transform: scale(1); }
-      to { opacity: 0; transform: scale(0.6); }
-    }
-
-    #scoreBoard {
-      margin-top: 10px;
-      font-size: 20px;
-      font-weight: bold;
-    }
-
-    #progressContainer {
-      margin-top: 10px;
-      width: 500px;
-      height: 25px;
-      background: #ddd;
-      border-radius: 15px;
-      overflow: hidden;
-      box-shadow: inset 2px 2px 6px rgba(0,0,0,0.2);
-    }
-
-    #progressBar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #f9a825, #f57c00);
-      border-radius: 15px;
-      transition: width 0.5s ease;
-    }
-
-    #confetti {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      overflow: hidden;
-    }
-
-    .confetti-piece {
+    h1 {
       position: absolute;
-      width: 10px;
-      height: 10px;
-      background-color: hsl(var(--hue), 70%, 50%);
-      top: -10px;
-      animation: fall 3s linear forwards;
+      top: 10px;
+      color: #fff;
+      text-shadow: 2px 2px 4px #000;
     }
-
-    @keyframes fall {
-      to {
-        transform: translateY(100vh) rotate(720deg);
-      }
+    #spotify {
+      display: none;
+      position: absolute;
+      bottom: 20px;
+      font-size: 20px;
+      background: #1db954;
+      padding: 10px 20px;
+      border-radius: 15px;
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0px 0px 15px rgba(0,0,0,0.4);
+    }
+    #spotify:hover {
+      background: #1ed760;
     }
   </style>
 </head>
 <body>
-  <h1>🌻 juego para zaye 🌻</h1>
-  <div id="gameBoard"></div>
-  <div id="scoreBoard">Puntos: 0</div>
-
-  <div id="progressContainer">
-    <div id="progressBar"></div>
-  </div>
-
-  <div id="confetti"></div>
-
+  <h1>🌸 juego para zaye 🌸</h1>
+  <a id="spotify" href="https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&pi=WxPawjn9RyWAr&nd=1&dlsi=2eae3a6453e34fc8" target="_blank">
+    🎶 Abrir Playlist en Spotify
+  </a>
   <script>
-    const board = document.getElementById("gameBoard");
-    const scoreBoard = document.getElementById("scoreBoard");
-    const progressBar = document.getElementById("progressBar");
-    const confettiContainer = document.getElementById("confetti");
-    const width = 8;
-    const flowers = ["🌻","🌸","🌹","🌷","🌼","💮"]; // distintos tipos para accesibilidad
-    let squares = [];
+    let grid = [];
+    let cols = 6;
+    let rows = 8;
+    let cellSize = 70;
+    let flowers = ["🌹", "🌻", "🌷", "🌼", "💮"];
     let score = 0;
-    const targetScore = 10000;
+    let goal = 10000;
+    let selected = [];
+    let falling = [];
+    let fading = [];
 
-    // Crear tablero
-    function createBoard() {
-      for (let i = 0; i < width*width; i++) {
-        const square = document.createElement("div");
-        square.setAttribute("draggable", true);
-        square.setAttribute("id", i);
-        square.classList.add("flower");
-        let randomFlower = flowers[Math.floor(Math.random() * flowers.length)];
-        square.textContent = randomFlower;
-        board.appendChild(square);
-        squares.push(square);
-      }
-    }
-    createBoard();
-
-    // Drag and drop
-    let colorBeingDragged;
-    let colorBeingReplaced;
-    let squareIdBeingDragged;
-    let squareIdBeingReplaced;
-
-    squares.forEach(square => square.addEventListener("dragstart", dragStart));
-    squares.forEach(square => square.addEventListener("dragend", dragEnd));
-    squares.forEach(square => square.addEventListener("dragover", e => e.preventDefault()));
-    squares.forEach(square => square.addEventListener("dragenter", e => e.preventDefault()));
-    squares.forEach(square => square.addEventListener("drop", dragDrop));
-
-    function dragStart(){
-      colorBeingDragged = this.textContent;
-      squareIdBeingDragged = parseInt(this.id);
+    function setup() {
+      createCanvas(cols * cellSize, rows * cellSize + 60);
+      initGrid();
     }
 
-    function dragDrop(){
-      colorBeingReplaced = this.textContent;
-      squareIdBeingReplaced = parseInt(this.id);
-      squares[squareIdBeingDragged].textContent = colorBeingReplaced;
-      squares[squareIdBeingReplaced].textContent = colorBeingDragged;
-    }
-
-    function dragEnd(){
-      let validMoves = [
-        squareIdBeingDragged -1,
-        squareIdBeingDragged -width,
-        squareIdBeingDragged +1,
-        squareIdBeingDragged +width
-      ];
-      let validMove = validMoves.includes(squareIdBeingReplaced);
-      if (squareIdBeingReplaced && validMove){
-        squareIdBeingReplaced = null;
-      } else if (squareIdBeingReplaced && !validMove){
-        squares[squareIdBeingReplaced].textContent = colorBeingReplaced;
-        squares[squareIdBeingDragged].textContent = colorBeingDragged;
-      }
-    }
-
-    // Revisar combinaciones
-    function checkMatches(){
-      for (let i = 0; i < squares.length; i++){
-        let rowOfThree = [i, i+1, i+2];
-        let decidedFlower = squares[i].textContent;
-        const isBlank = decidedFlower === "";
-
-        if (i % width < 6){
-          if (rowOfThree.every(index => squares[index].textContent === decidedFlower && !isBlank)){
-            rowOfThree.forEach(index => {
-              squares[index].classList.add("fade-out");
-              setTimeout(()=> squares[index].textContent = "", 600);
-            });
-            score += 110;
-          }
+    function initGrid() {
+      for (let x = 0; x < cols; x++) {
+        grid[x] = [];
+        for (let y = 0; y < rows; y++) {
+          grid[x][y] = random(flowers);
         }
+      }
+    }
 
-        let columnOfThree = [i, i+width, i+width*2];
-        if (i < 48){
-          if (columnOfThree.every(index => squares[index].textContent === decidedFlower && !isBlank)){
-            columnOfThree.forEach(index => {
-              squares[index].classList.add("fade-out");
-              setTimeout(()=> squares[index].textContent = "", 600);
-            });
-            score += 110;
+    function draw() {
+      background(255, 182, 193);
+
+      // Decoración flotante 🌸
+      for (let i = 0; i < 20; i++) {
+        let x = (frameCount * 0.5 + i * 50) % width;
+        let y = (i * 60 + frameCount * 0.3) % height;
+        textSize(20);
+        text("🌸", x, y);
+      }
+
+      // Dibujar tablero
+      textAlign(CENTER, CENTER);
+      textSize(40);
+      for (let x = 0; x < cols; x++) {
+        for (let y = 0; y < rows; y++) {
+          let flower = grid[x][y];
+          if (flower) {
+            if (fading[x + "," + y]) {
+              push();
+              let alpha = fading[x + "," + y];
+              fill(0, alpha);
+              text(flower, x * cellSize + cellSize / 2, y * cellSize + cellSize / 2);
+              pop();
+              fading[x + "," + y] -= 5;
+              if (fading[x + "," + y] <= 0) {
+                grid[x][y] = null;
+                delete fading[x + "," + y];
+              }
+            } else {
+              text(flower, x * cellSize + cellSize / 2, y * cellSize + cellSize / 2);
+            }
           }
         }
       }
-      scoreBoard.textContent = "Puntos: " + score;
-      progressBar.style.width = (score/targetScore*100) + "%";
-      if (score >= targetScore){
-        launchConfetti();
-        setTimeout(()=>{
-          window.open("https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&pi=WxPawjn9RyWAr&nd=1&dlsi=2eae3a6453e34fc8", "_blank");
-        }, 1500);
-      }
-    }
 
-    // Hacer que caigan las flores
-    function moveDown(){
-      for (let i = 0; i < 56; i++){
-        if (squares[i + width].textContent === ""){
-          squares[i + width].textContent = squares[i].textContent;
-          squares[i].textContent = "";
+      // Caída de flores
+      for (let x = 0; x < cols; x++) {
+        for (let y = rows - 1; y >= 0; y--) {
+          if (!grid[x][y]) {
+            for (let k = y - 1; k >= 0; k--) {
+              if (grid[x][k]) {
+                grid[x][y] = grid[x][k];
+                grid[x][k] = null;
+                break;
+              }
+            }
+            if (!grid[x][y]) {
+              grid[x][y] = random(flowers);
+            }
+          }
         }
       }
-      for (let i = 0; i < width; i++){
-        if (squares[i].textContent === ""){
-          let randomFlower = flowers[Math.floor(Math.random() * flowers.length)];
-          squares[i].textContent = randomFlower;
+
+      // Barra de progreso
+      fill(255);
+      rect(10, height - 40, width - 20, 20, 10);
+      let progress = map(score, 0, goal, 0, width - 20);
+      fill(50, 205, 50);
+      rect(10, height - 40, progress, 20, 10);
+
+      // Puntos
+      fill(0);
+      textSize(20);
+      text("Puntos: " + score, width / 2, height - 55);
+
+      // Mostrar Spotify si llega a meta
+      if (score >= goal) {
+        document.getElementById("spotify").style.display = "block";
+      }
+    }
+
+    function mousePressed() {
+      let x = floor(mouseX / cellSize);
+      let y = floor(mouseY / cellSize);
+      if (x >= 0 && x < cols && y >= 0 && y < rows) {
+        selected.push({x, y});
+        if (selected.length == 2) {
+          swap(selected[0], selected[1]);
+          selected = [];
         }
       }
     }
 
-    // Confetti
-    function launchConfetti(){
-      for(let i=0; i<100; i++){
-        const piece = document.createElement("div");
-        piece.classList.add("confetti-piece");
-        piece.style.left = Math.random()*100 + "vw";
-        piece.style.setProperty("--hue", Math.floor(Math.random()*360));
-        confettiContainer.appendChild(piece);
-        setTimeout(()=> piece.remove(), 3000);
+    function swap(a, b) {
+      let temp = grid[a.x][a.y];
+      grid[a.x][a.y] = grid[b.x][b.y];
+      grid[b.x][b.y] = temp;
+
+      let matches = checkMatches();
+      if (matches.length == 0) {
+        // Revertir si no hay match
+        grid[b.x][b.y] = grid[a.x][a.y];
+        grid[a.x][a.y] = temp;
+      } else {
+        // Fade out en las coincidencias
+        for (let m of matches) {
+          fading[m.x + "," + m.y] = 255;
+        }
+        score += matches.length * 110;
       }
     }
 
-    window.setInterval(function(){
-      checkMatches();
-      moveDown();
-    }, 200);
-
+    function checkMatches() {
+      let matches = [];
+      // Horizontal
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols - 2; x++) {
+          if (grid[x][y] && grid[x][y] === grid[x + 1][y] && grid[x][y] === grid[x + 2][y]) {
+            matches.push({x, y}, {x: x + 1, y}, {x: x + 2, y});
+          }
+        }
+      }
+      // Vertical
+      for (let x = 0; x < cols; x++) {
+        for (let y = 0; y < rows - 2; y++) {
+          if (grid[x][y] && grid[x][y] === grid[x][y + 1] && grid[x][y] === grid[x][y + 2]) {
+            matches.push({x, y}, {x, y: y + 1}, {x, y: y + 2});
+          }
+        }
+      }
+      return matches;
+    }
   </script>
 </body>
 </html>
