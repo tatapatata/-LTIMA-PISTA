@@ -1,181 +1,252 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego para Zaye 🌸</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #ffe4f2, #fff8e7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      color: #ff69b4;
+      margin-bottom: 10px;
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      gap: 5px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      font-size: 32px;
+      text-align: center;
+      line-height: 60px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 12px;
+      background: #f9f9f9;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .cell.match {
+      transform: scale(1.3);
+      opacity: 0;
+    }
+    #score-container {
+      margin: 15px;
+      font-size: 18px;
+      color: #333;
+    }
+    #progress {
+      width: 400px;
+      height: 25px;
+      background: #ddd;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff69b4, #ffa500);
+      transition: width 0.5s ease;
+    }
+    #win-message {
+      display: none;
+      font-size: 20px;
+      color: #28a745;
+      margin-top: 20px;
+    }
+    #win-message a {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌸 Juego para Zaye 🌻</h1>
+  <div id="score-container">
+    Puntos: <span id="score">0</span> / 10000
+    <div id="progress"><div id="progress-bar"></div></div>
+  </div>
+  <div id="game"></div>
+  <div id="win-message">
+    🎉 ¡Felicidades, Zaye! 🌹 Has completado el juego.<br>
+    Aquí está tu sorpresa:  
+    <a href="https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&pi=WxPawjn9RyWAr" target="_blank">Tu playlist especial 💖</a>
+  </div>
 
-const numRows = 8;
-const numCols = 8;
-const targetScore = 10000;
+  <script>
+    const flowers = ["🌻","🌹","🌷","🌼","🌺","🌸"];
+    const size = 8;
+    const goal = 10000;
+    let score = 0;
+    let board = [];
 
-// Usamos diferentes tipos de flores para hacerlas distinguibles
-const flowerTypes = ["🌻", "🌹", "🌷", "🌼", "🌺", "🌸"];
+    const game = document.getElementById("game");
+    const scoreEl = document.getElementById("score");
+    const progressBar = document.getElementById("progress-bar");
+    const winMessage = document.getElementById("win-message");
 
-function getRandomFlower() {
-  return flowerTypes[Math.floor(Math.random() * flowerTypes.length)];
-}
-
-function CandyCrushGame() {
-  const [grid, setGrid] = useState([]);
-  const [score, setScore] = useState(0);
-  const [gameWon, setGameWon] = useState(false);
-
-  useEffect(() => {
-    const initialGrid = [];
-    for (let row = 0; row < numRows; row++) {
-      const rowArr = [];
-      for (let col = 0; col < numCols; col++) {
-        rowArr.push(getRandomFlower());
+    // Inicializar tablero
+    function initBoard() {
+      board = [];
+      game.innerHTML = "";
+      for (let r = 0; r < size; r++) {
+        const row = [];
+        for (let c = 0; c < size; c++) {
+          const flower = randomFlower();
+          row.push(flower);
+          const cell = createCell(r, c, flower);
+          game.appendChild(cell);
+        }
+        board.push(row);
       }
-      initialGrid.push(rowArr);
     }
-    setGrid(initialGrid);
-  }, []);
 
-  useEffect(() => {
-    if (score >= targetScore) {
-      setGameWon(true);
+    function randomFlower() {
+      return flowers[Math.floor(Math.random() * flowers.length)];
     }
-  }, [score]);
 
-  const checkMatches = (newGrid) => {
-    let newScore = 0;
-    const matched = [];
+    function createCell(r, c, flower) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.textContent = flower;
+      cell.addEventListener("click", () => selectCell(r, c));
+      return cell;
+    }
 
-    // Horizontal matches
-    for (let row = 0; row < numRows; row++) {
-      for (let col = 0; col < numCols - 2; col++) {
-        const flower = newGrid[row][col];
-        if (
-          flower &&
-          flower === newGrid[row][col + 1] &&
-          flower === newGrid[row][col + 2]
-        ) {
-          let length = 3;
-          while (
-            col + length < numCols &&
-            newGrid[row][col + length] === flower
-          ) {
-            length++;
-          }
-          for (let k = 0; k < length; k++) {
-            matched.push([row, col + k]);
-          }
-          newScore += length * 110; // SIEMPRE enteros
+    let firstCell = null;
+    function selectCell(r, c) {
+      const cell = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+      if (!firstCell) {
+        firstCell = cell;
+        cell.style.transform = "scale(1.2)";
+      } else {
+        swapCells(firstCell, cell);
+        firstCell.style.transform = "scale(1)";
+        firstCell = null;
+      }
+    }
+
+    function swapCells(cell1, cell2) {
+      const r1 = +cell1.dataset.row;
+      const c1 = +cell1.dataset.col;
+      const r2 = +cell2.dataset.row;
+      const c2 = +cell2.dataset.col;
+      if (Math.abs(r1-r2)+Math.abs(c1-c2) !== 1) return;
+
+      [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
+      updateBoard();
+      if (!checkMatches()) {
+        [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
+        updateBoard();
+      }
+    }
+
+    function updateBoard() {
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const cell = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+          cell.textContent = board[r][c];
         }
       }
     }
 
-    // Vertical matches
-    for (let col = 0; col < numCols; col++) {
-      for (let row = 0; row < numRows - 2; row++) {
-        const flower = newGrid[row][col];
-        if (
-          flower &&
-          flower === newGrid[row + 1][col] &&
-          flower === newGrid[row + 2][col]
-        ) {
-          let length = 3;
-          while (
-            row + length < numRows &&
-            newGrid[row + length][col] === flower
-          ) {
-            length++;
+    function checkMatches() {
+      let matches = [];
+      // Horizontal
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size-2; c++) {
+          let f = board[r][c];
+          if (f && f === board[r][c+1] && f === board[r][c+2]) {
+            let length = 3;
+            while (c+length < size && board[r][c+length] === f) length++;
+            matches.push({r, c, length, horizontal: true});
+            c += length-1;
           }
-          for (let k = 0; k < length; k++) {
-            matched.push([row + k, col]);
-          }
-          newScore += length * 110;
         }
       }
-    }
-
-    matched.forEach(([row, col]) => {
-      newGrid[row][col] = null;
-    });
-
-    setScore((prev) => prev + newScore);
-
-    return matched.length > 0;
-  };
-
-  const dropFlowers = (newGrid) => {
-    for (let col = 0; col < numCols; col++) {
-      let emptySpaces = 0;
-      for (let row = numRows - 1; row >= 0; row--) {
-        if (!newGrid[row][col]) {
-          emptySpaces++;
-        } else if (emptySpaces > 0) {
-          newGrid[row + emptySpaces][col] = newGrid[row][col];
-          newGrid[row][col] = null;
+      // Vertical
+      for (let c = 0; c < size; c++) {
+        for (let r = 0; r < size-2; r++) {
+          let f = board[r][c];
+          if (f && f === board[r+1][c] && f === board[r+2][c]) {
+            let length = 3;
+            while (r+length < size && board[r+length][c] === f) length++;
+            matches.push({r, c, length, horizontal: false});
+            r += length-1;
+          }
         }
       }
-      for (let row = 0; row < emptySpaces; row++) {
-        newGrid[row][col] = getRandomFlower();
+      if (matches.length > 0) {
+        removeMatches(matches);
+        return true;
       }
+      return false;
     }
-  };
 
-  const handleCellClick = (row, col) => {
-    const newGrid = grid.map((r) => [...r]);
-    const hasMatches = checkMatches(newGrid);
+    function removeMatches(matches) {
+      let points = 0;
+      matches.forEach(m => {
+        const basePoints = 110;
+        const multiplier = m.length - 2;
+        points += basePoints * multiplier;
+        for (let i = 0; i < m.length; i++) {
+          let r = m.r + (m.horizontal ? 0 : i);
+          let c = m.c + (m.horizontal ? i : 0);
+          const cell = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+          cell.classList.add("match");
+          setTimeout(() => { board[r][c] = null; }, 250);
+        }
+      });
+      score += points;
+      scoreEl.textContent = score;
+      progressBar.style.width = Math.min(100, (score/goal)*100) + "%";
 
-    if (hasMatches) {
-      dropFlowers(newGrid);
-      setGrid(newGrid);
+      if (score >= goal) {
+        winMessage.style.display = "block";
+      }
+
+      setTimeout(dropFlowers, 300);
     }
-  };
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-pink-100 to-yellow-100 p-4">
-      <h1 className="text-3xl font-bold mb-4">🌸 Candy Flowers 🌼</h1>
-      <p className="mb-2 text-lg font-semibold">Puntaje: {score}</p>
-      <div
-        className="grid"
-        style={{
-          gridTemplateColumns: `repeat(${numCols}, 50px)`,
-          gridTemplateRows: `repeat(${numRows}, 50px)`,
-          gap: "4px",
-        }}
-      >
-        {grid.map((row, rowIndex) =>
-          row.map((flower, colIndex) => (
-            <AnimatePresence key={`${rowIndex}-${colIndex}-${flower}`}>
-              {flower && (
-                <motion.div
-                  key={`${rowIndex}-${colIndex}`}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{
-                    scale: 1,
-                    opacity: 1,
-                    y: 0,
-                    transition: { type: "spring", stiffness: 120, damping: 12 },
-                  }}
-                  exit={{ scale: 0, opacity: 0, transition: { duration: 0.3 } }}
-                  onClick={() => handleCellClick(rowIndex, colIndex)}
-                  className="flex items-center justify-center w-12 h-12 rounded-xl shadow-md border-2 border-black bg-white text-2xl cursor-pointer select-none"
-                >
-                  {flower}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          ))
-        )}
-      </div>
+    function dropFlowers() {
+      for (let c = 0; c < size; c++) {
+        let empty = 0;
+        for (let r = size-1; r >= 0; r--) {
+          if (!board[r][c]) {
+            empty++;
+          } else if (empty > 0) {
+            board[r+empty][c] = board[r][c];
+            board[r][c] = null;
+          }
+        }
+        for (let r = 0; r < empty; r++) {
+          board[r][c] = randomFlower();
+        }
+      }
+      updateBoard();
+      setTimeout(() => { if (checkMatches()) return; }, 300);
+    }
 
-      {gameWon && (
-        <div className="mt-6 p-6 bg-white rounded-2xl shadow-xl text-center">
-          <h2 className="text-2xl font-bold mb-2">🎉 ¡Ganaste! 🎉</h2>
-          <p className="mb-4">Has llenado la barra con {score} puntos.</p>
-          <a
-            href="https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&pi=WxPawjn9RyWAr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-green-500 text-white rounded-lg shadow hover:bg-green-600"
-          >
-            💚 Escuchar Playlist Especial 💚
-          </a>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default CandyCrushGame;
+    initBoard();
+  </script>
+</body>
+</html>
