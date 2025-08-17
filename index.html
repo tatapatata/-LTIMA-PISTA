@@ -2,245 +2,295 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Juego para Zaye</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
-      background: linear-gradient(135deg, #ffe6f0, #e6f7ff);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      overflow: hidden;
+      margin: 0;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      background: linear-gradient(135deg, #ffe6f0, #fff8e7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
+
     h1 {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #ff66b2;
-      text-shadow: 2px 2px 6px rgba(0,0,0,0.15);
+      font-size: 2rem;
+      color: #e91e63;
+      text-align: center;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px #fff;
+      animation: pulse 2s infinite;
     }
-    canvas {
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .scoreboard {
       background: white;
+      padding: 15px 25px;
       border-radius: 20px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      display: block;
-      margin: auto;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      text-align: center;
+      margin-bottom: 20px;
+      animation: fadeIn 1s ease-in-out;
     }
-    #progress-container {
-      width: 80%;
-      height: 30px;
-      background: #ddd;
-      border-radius: 15px;
-      margin: 20px auto;
+
+    .progress-container {
+      background: #eee;
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow: inset 0 4px 8px rgba(0,0,0,0.2);
+      height: 12px;
+      margin-top: 10px;
     }
-    #progress-bar {
+
+    .progress-bar {
+      background: linear-gradient(90deg, #ff4081, #ff9800);
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #ff66b2, #ffcc00);
       transition: width 0.5s ease-in-out;
     }
-    .decor {
-      position: absolute;
-      font-size: 2rem;
-      opacity: 0.6;
-      pointer-events: none;
+
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      gap: 5px;
+      margin: 20px auto;
+      perspective: 1000px;
     }
+
+    .tile {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      background: white;
+      border: 3px solid #333;
+      border-radius: 12px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .tile:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+
+    .fall {
+      animation: fall 0.6s ease forwards;
+    }
+
+    @keyframes fall {
+      from { transform: translateY(-100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
     .fade-out {
-      animation: fadeOut 0.6s forwards;
+      animation: fadeOut 0.5s forwards;
     }
+
     @keyframes fadeOut {
       from { opacity: 1; transform: scale(1); }
-      to { opacity: 0; transform: scale(0.6); }
+      to { opacity: 0; transform: scale(0.5); }
     }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* 🌸 Decoración extra */
+    .flower-deco {
+      position: absolute;
+      font-size: 2rem;
+      opacity: 0.7;
+      animation: float 6s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(20deg); }
+    }
+
+    .winner {
+      font-size: 1.5rem;
+      margin-top: 20px;
+      text-align: center;
+      color: #d81b60;
+      animation: fadeIn 1s ease-in-out;
+    }
+
   </style>
 </head>
 <body>
-  <div class="text-center mt-6">
-    <h1>🌸 Juego para Zaye 🌸</h1>
+  <h1>🌸 Juego para Zaye 🌸</h1>
+  <div class="scoreboard">
+    <div>Puntos: <span id="score">0</span> / 10000</div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
   </div>
-  <div id="progress-container"><div id="progress-bar"></div></div>
-  <canvas id="gameCanvas" width="480" height="480"></canvas>
   
+  <div class="game-board" id="game-board"></div>
+
+  <!-- Decoraciones flotantes -->
+  <div class="flower-deco" style="top:10%; left:5%;">🌺</div>
+  <div class="flower-deco" style="top:20%; right:10%;">🌸</div>
+  <div class="flower-deco" style="bottom:15%; left:15%;">🌷</div>
+  <div class="flower-deco" style="bottom:20%; right:20%;">🌻</div>
+
+  <div id="winner-message" class="winner"></div>
+
   <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-
-    const rows = 8, cols = 8, size = 60;
-    const flowers = ["🌻","🌹","🌷","🌼","💐","🌸"];
-    let board = [];
-    let selected = null;
+    const boardSize = 8;
+    const flowers = ["🌸","🌻","🌷","🌼","💮"];
+    const board = document.getElementById("game-board");
+    let tiles = [];
+    let firstTile = null;
     let score = 0;
-    const target = 10000;
 
-    // Crear decoración flotante
-    function createDecor() {
-      const decor = document.createElement("div");
-      decor.className = "decor";
-      decor.innerText = flowers[Math.floor(Math.random()*flowers.length)];
-      decor.style.left = Math.random()*window.innerWidth + "px";
-      decor.style.top = "-50px";
-      document.body.appendChild(decor);
-
-      let y = -50;
-      const fall = setInterval(() => {
-        y += 2;
-        decor.style.top = y+"px";
-        if(y > window.innerHeight+50){
-          clearInterval(fall);
-          decor.remove();
+    function createBoard() {
+      tiles = [];
+      board.innerHTML = "";
+      for (let r = 0; r < boardSize; r++) {
+        let row = [];
+        for (let c = 0; c < boardSize; c++) {
+          let tile = document.createElement("div");
+          tile.classList.add("tile");
+          tile.dataset.row = r;
+          tile.dataset.col = c;
+          tile.textContent = flowers[Math.floor(Math.random() * flowers.length)];
+          tile.addEventListener("click", () => selectTile(tile));
+          board.appendChild(tile);
+          row.push(tile);
         }
-      }, 50);
-    }
-    setInterval(createDecor, 2000);
-
-    function randomFlower(){ return flowers[Math.floor(Math.random()*flowers.length)]; }
-
-    function initBoard(){
-      board = [];
-      for(let r=0;r<rows;r++){
-        board[r] = [];
-        for(let c=0;c<cols;c++){
-          board[r][c] = randomFlower();
-        }
+        tiles.push(row);
       }
     }
 
-    function drawBoard(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      for(let r=0;r<rows;r++){
-        for(let c=0;c<cols;c++){
-          const flower = board[r][c];
-          if(flower){
-            ctx.font="40px Segoe UI Emoji";
-            ctx.textAlign="center";
-            ctx.textBaseline="middle";
-            ctx.fillText(flower, c*size+size/2, r*size+size/2);
+    function selectTile(tile) {
+      if (!firstTile) {
+        firstTile = tile;
+        tile.style.transform = "scale(1.2)";
+        return;
+      }
+
+      if (firstTile === tile) {
+        firstTile.style.transform = "scale(1)";
+        firstTile = null;
+        return;
+      }
+
+      swapTiles(firstTile, tile);
+
+      if (!checkMatches()) {
+        swapTiles(firstTile, tile); // 🔄 revertir si no hay match
+      }
+
+      firstTile.style.transform = "scale(1)";
+      firstTile = null;
+    }
+
+    function swapTiles(tile1, tile2) {
+      const temp = tile1.textContent;
+      tile1.textContent = tile2.textContent;
+      tile2.textContent = temp;
+    }
+
+    function checkMatches() {
+      let match = false;
+
+      // filas
+      for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize - 2; c++) {
+          let t1 = tiles[r][c], t2 = tiles[r][c+1], t3 = tiles[r][c+2];
+          if (t1.textContent && t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
+            [t1, t2, t3].forEach(t => { 
+              t.classList.add("fade-out");
+              setTimeout(() => t.textContent = "", 500);
+            });
+            match = true;
+            updateScore(100);
           }
         }
       }
-    }
 
-    function swap(r1,c1,r2,c2){
-      const temp = board[r1][c1];
-      board[r1][c1] = board[r2][c2];
-      board[r2][c2] = temp;
-    }
-
-    function findMatches(){
-      let matches = [];
-      // horizontales
-      for(let r=0;r<rows;r++){
-        for(let c=0;c<cols-2;c++){
-          let f=board[r][c];
-          if(f && f===board[r][c+1] && f===board[r][c+2]){
-            let m=[[r,c],[r,c+1],[r,c+2]];
-            c+=2;
-            while(c+1<cols && board[r][c+1]===f){
-              m.push([r,c+1]); c++;
-            }
-            matches.push(m);
+      // columnas
+      for (let c = 0; c < boardSize; c++) {
+        for (let r = 0; r < boardSize - 2; r++) {
+          let t1 = tiles[r][c], t2 = tiles[r+1][c], t3 = tiles[r+2][c];
+          if (t1.textContent && t1.textContent === t2.textContent && t2.textContent === t3.textContent) {
+            [t1, t2, t3].forEach(t => { 
+              t.classList.add("fade-out");
+              setTimeout(() => t.textContent = "", 500);
+            });
+            match = true;
+            updateScore(100);
           }
         }
       }
-      // verticales
-      for(let c=0;c<cols;c++){
-        for(let r=0;r<rows-2;r++){
-          let f=board[r][c];
-          if(f && f===board[r+1][c] && f===board[r+2][c]){
-            let m=[[r,c],[r+1,c],[r+2,c]];
-            r+=2;
-            while(r+1<rows && board[r+1][c]===f){
-              m.push([r+1,c]); r++;
-            }
-            matches.push(m);
-          }
-        }
+
+      if (match) {
+        setTimeout(dropTiles, 600);
       }
-      return matches;
+
+      return match;
     }
 
-    function removeMatches(matches){
-      matches.forEach(m=>{
-        score += m.length*110;
-        m.forEach(([r,c])=>{
-          board[r][c]=null;
-        });
-      });
-      updateProgress();
-    }
-
-    function collapse(){
-      for(let c=0;c<cols;c++){
-        let empty=[];
-        for(let r=rows-1;r>=0;r--){
-          if(board[r][c]==null) empty.push(r);
-          else if(empty.length>0){
-            let er=empty.shift();
-            board[er][c]=board[r][c];
-            board[r][c]=null;
+    function dropTiles() {
+      for (let c = 0; c < boardSize; c++) {
+        let empty = [];
+        for (let r = boardSize - 1; r >= 0; r--) {
+          if (tiles[r][c].textContent === "") {
+            empty.push(r);
+          } else if (empty.length > 0) {
+            let newR = empty.shift();
+            tiles[newR][c].textContent = tiles[r][c].textContent;
+            tiles[r][c].textContent = "";
             empty.push(r);
           }
         }
-      }
-    }
 
-    function refill(){
-      for(let r=0;r<rows;r++){
-        for(let c=0;c<cols;c++){
-          if(board[r][c]==null){
-            board[r][c]=randomFlower();
+        // rellenar arriba
+        for (let r = 0; r < boardSize; r++) {
+          if (tiles[r][c].textContent === "") {
+            tiles[r][c].textContent = flowers[Math.floor(Math.random() * flowers.length)];
+            tiles[r][c].classList.add("fall");
+            setTimeout(() => tiles[r][c].classList.remove("fall"), 600);
           }
         }
       }
+
+      setTimeout(checkMatches, 400);
     }
 
-    function updateProgress(){
-      let percent=Math.min(100,(score/target)*100);
-      document.getElementById("progress-bar").style.width=percent+"%";
-      if(score>=target){
-        setTimeout(()=>{
-          alert("🎉 ¡Felicidades Zaye! 🌸 Has ganado 🌸\nAquí está tu sorpresa:\nhttps://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw");
-        },500);
+    function updateScore(points) {
+      score += points;
+      document.getElementById("score").textContent = score;
+      const progress = Math.min((score / 10000) * 100, 100);
+      document.getElementById("progress-bar").style.width = progress + "%";
+
+      if (score >= 10000) {
+        document.getElementById("winner-message").innerHTML = 
+          `🎉 ¡Felicidades Zaye! 🎉<br>
+          Aquí tienes tu playlist especial: <br>
+          <a href="https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&nd=1&dlsi=2eae3a6453e34fc8" 
+             target="_blank">🎵 Escuchar en Spotify</a>`;
       }
     }
 
-    canvas.addEventListener("click",(e)=>{
-      const rect=canvas.getBoundingClientRect();
-      const x=e.clientX-rect.left;
-      const y=e.clientY-rect.top;
-      const r=Math.floor(y/size), c=Math.floor(x/size);
-      if(selected){
-        const [r0,c0]=selected;
-        if(Math.abs(r-r0)+Math.abs(c-c0)===1){
-          swap(r0,c0,r,c);
-          let matches=findMatches();
-          if(matches.length>0){
-            processMatches(matches);
-          } else {
-            swap(r0,c0,r,c);
-          }
-          selected=null;
-        } else selected=[r,c];
-      } else {
-        selected=[r,c];
-      }
-      drawBoard();
-    });
-
-    function processMatches(matches){
-      removeMatches(matches);
-      drawBoard();
-      setTimeout(()=>{
-        collapse();
-        refill();
-        let newMatches=findMatches();
-        if(newMatches.length>0){
-          processMatches(newMatches);
-        } else drawBoard();
-      },400);
-    }
-
-    initBoard();
-    drawBoard();
+    createBoard();
   </script>
 </body>
 </html>
