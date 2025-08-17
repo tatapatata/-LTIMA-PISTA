@@ -1,242 +1,181 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Candy Crush de Flores para Zaye</title>
-  <style>
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-      font-family: Arial, sans-serif;
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+const numRows = 8;
+const numCols = 8;
+const targetScore = 10000;
+
+// Usamos diferentes tipos de flores para hacerlas distinguibles
+const flowerTypes = ["🌻", "🌹", "🌷", "🌼", "🌺", "🌸"];
+
+function getRandomFlower() {
+  return flowerTypes[Math.floor(Math.random() * flowerTypes.length)];
+}
+
+function CandyCrushGame() {
+  const [grid, setGrid] = useState([]);
+  const [score, setScore] = useState(0);
+  const [gameWon, setGameWon] = useState(false);
+
+  useEffect(() => {
+    const initialGrid = [];
+    for (let row = 0; row < numRows; row++) {
+      const rowArr = [];
+      for (let col = 0; col < numCols; col++) {
+        rowArr.push(getRandomFlower());
+      }
+      initialGrid.push(rowArr);
     }
-    h1 {
-      margin-bottom: 10px;
+    setGrid(initialGrid);
+  }, []);
+
+  useEffect(() => {
+    if (score >= targetScore) {
+      setGameWon(true);
     }
-    #game {
-      display: grid;
-      grid-template-columns: repeat(8, 60px);
-      grid-template-rows: repeat(8, 60px);
-      gap: 5px;
-      background: #fff;
-      padding: 10px;
-      border-radius: 15px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  }, [score]);
+
+  const checkMatches = (newGrid) => {
+    let newScore = 0;
+    const matched = [];
+
+    // Horizontal matches
+    for (let row = 0; row < numRows; row++) {
+      for (let col = 0; col < numCols - 2; col++) {
+        const flower = newGrid[row][col];
+        if (
+          flower &&
+          flower === newGrid[row][col + 1] &&
+          flower === newGrid[row][col + 2]
+        ) {
+          let length = 3;
+          while (
+            col + length < numCols &&
+            newGrid[row][col + length] === flower
+          ) {
+            length++;
+          }
+          for (let k = 0; k < length; k++) {
+            matched.push([row, col + k]);
+          }
+          newScore += length * 110; // SIEMPRE enteros
+        }
+      }
     }
-    .cell {
-      width: 60px;
-      height: 60px;
-      font-size: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      border: 3px solid #000; /* Bordes negros para contraste */
-      border-radius: 12px;
-      background: #f9f9f9;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-      transition: transform 0.2s ease;
+
+    // Vertical matches
+    for (let col = 0; col < numCols; col++) {
+      for (let row = 0; row < numRows - 2; row++) {
+        const flower = newGrid[row][col];
+        if (
+          flower &&
+          flower === newGrid[row + 1][col] &&
+          flower === newGrid[row + 2][col]
+        ) {
+          let length = 3;
+          while (
+            row + length < numRows &&
+            newGrid[row + length][col] === flower
+          ) {
+            length++;
+          }
+          for (let k = 0; k < length; k++) {
+            matched.push([row + k, col]);
+          }
+          newScore += length * 110;
+        }
+      }
     }
-    .cell:hover {
-      transform: scale(1.1);
+
+    matched.forEach(([row, col]) => {
+      newGrid[row][col] = null;
+    });
+
+    setScore((prev) => prev + newScore);
+
+    return matched.length > 0;
+  };
+
+  const dropFlowers = (newGrid) => {
+    for (let col = 0; col < numCols; col++) {
+      let emptySpaces = 0;
+      for (let row = numRows - 1; row >= 0; row--) {
+        if (!newGrid[row][col]) {
+          emptySpaces++;
+        } else if (emptySpaces > 0) {
+          newGrid[row + emptySpaces][col] = newGrid[row][col];
+          newGrid[row][col] = null;
+        }
+      }
+      for (let row = 0; row < emptySpaces; row++) {
+        newGrid[row][col] = getRandomFlower();
+      }
     }
-    .matched {
-      animation: pop 0.4s forwards;
+  };
+
+  const handleCellClick = (row, col) => {
+    const newGrid = grid.map((r) => [...r]);
+    const hasMatches = checkMatches(newGrid);
+
+    if (hasMatches) {
+      dropFlowers(newGrid);
+      setGrid(newGrid);
     }
-    @keyframes pop {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.5); opacity: 0.6; }
-      100% { transform: scale(0); opacity: 0; }
-    }
-    .fall {
-      animation: fall 0.5s ease-out;
-    }
-    @keyframes fall {
-      0% { transform: translateY(-80px); }
-      70% { transform: translateY(10px); }
-      100% { transform: translateY(0); }
-    }
-    #scoreboard {
-      margin-top: 15px;
-      width: 80%;
-      background: #ddd;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    #progress {
-      height: 20px;
-      background: linear-gradient(to right, #ff7e5f, #feb47b);
-      width: 0%;
-      transition: width 0.5s ease;
-    }
-    #victory {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #victoryContent {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-    }
-    #victoryContent a {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 10px 15px;
-      background: #ff7e5f;
-      color: #fff;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-  </style>
-</head>
-<body>
-  <h1>🌻 Candy Crush de Flores para Zaye 🌷</h1>
-  <div id="game"></div>
-  <div id="scoreboard">
-    <div id="progress"></div>
-  </div>
-  <div id="victory">
-    <div id="victoryContent">
-      <h2>🎉 ¡Felicidades Zaye! 🎉</h2>
-      <p>Has completado el reto floral 🌸🌻🌹</p>
-      <a href="https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&pi=WxPawjn9RyWAr" target="_blank">Abrir Playlist Especial 💖</a>
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-pink-100 to-yellow-100 p-4">
+      <h1 className="text-3xl font-bold mb-4">🌸 Candy Flowers 🌼</h1>
+      <p className="mb-2 text-lg font-semibold">Puntaje: {score}</p>
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${numCols}, 50px)`,
+          gridTemplateRows: `repeat(${numRows}, 50px)`,
+          gap: "4px",
+        }}
+      >
+        {grid.map((row, rowIndex) =>
+          row.map((flower, colIndex) => (
+            <AnimatePresence key={`${rowIndex}-${colIndex}-${flower}`}>
+              {flower && (
+                <motion.div
+                  key={`${rowIndex}-${colIndex}`}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{
+                    scale: 1,
+                    opacity: 1,
+                    y: 0,
+                    transition: { type: "spring", stiffness: 120, damping: 12 },
+                  }}
+                  exit={{ scale: 0, opacity: 0, transition: { duration: 0.3 } }}
+                  onClick={() => handleCellClick(rowIndex, colIndex)}
+                  className="flex items-center justify-center w-12 h-12 rounded-xl shadow-md border-2 border-black bg-white text-2xl cursor-pointer select-none"
+                >
+                  {flower}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          ))
+        )}
+      </div>
+
+      {gameWon && (
+        <div className="mt-6 p-6 bg-white rounded-2xl shadow-xl text-center">
+          <h2 className="text-2xl font-bold mb-2">🎉 ¡Ganaste! 🎉</h2>
+          <p className="mb-4">Has llenado la barra con {score} puntos.</p>
+          <a
+            href="https://open.spotify.com/playlist/6rGxHrCj9w4WLERyNcsbBK?si=rLIOE8kHTDuNQpqXp7lUuw&pi=WxPawjn9RyWAr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-green-500 text-white rounded-lg shadow hover:bg-green-600"
+          >
+            💚 Escuchar Playlist Especial 💚
+          </a>
+        </div>
+      )}
     </div>
-  </div>
+  );
+}
 
-  <script>
-    const game = document.getElementById('game');
-    const progress = document.getElementById('progress');
-    const victory = document.getElementById('victory');
-    const width = 8;
-    const squares = [];
-    const flowers = ["🌻","🌹","🌷","🌼","🌺","🌸"];
-
-    let score = 0;
-    const targetScore = 10000;
-
-    // Crear tablero
-    function createBoard() {
-      for (let i=0; i < width*width; i++) {
-        const cell = document.createElement('div');
-        cell.setAttribute('draggable', true);
-        cell.setAttribute('id', i);
-        cell.classList.add('cell');
-        cell.textContent = flowers[Math.floor(Math.random()*flowers.length)];
-        game.appendChild(cell);
-        squares.push(cell);
-      }
-    }
-    createBoard();
-
-    let colorBeingDragged, colorBeingReplaced, squareIdBeingDragged, squareIdBeingReplaced;
-
-    squares.forEach(square => square.addEventListener('dragstart', dragStart));
-    squares.forEach(square => square.addEventListener('dragend', dragEnd));
-    squares.forEach(square => square.addEventListener('dragover', dragOver));
-    squares.forEach(square => square.addEventListener('dragenter', dragEnter));
-    squares.forEach(square => square.addEventListener('dragleave', dragLeave));
-    squares.forEach(square => square.addEventListener('drop', dragDrop));
-
-    function dragStart() {
-      colorBeingDragged = this.textContent;
-      squareIdBeingDragged = parseInt(this.id);
-    }
-    function dragOver(e) { e.preventDefault(); }
-    function dragEnter(e) { e.preventDefault(); }
-    function dragLeave() {}
-    function dragDrop() {
-      colorBeingReplaced = this.textContent;
-      squareIdBeingReplaced = parseInt(this.id);
-      this.textContent = colorBeingDragged;
-      squares[squareIdBeingDragged].textContent = colorBeingReplaced;
-    }
-    function dragEnd() {
-      let validMoves = [squareIdBeingDragged-1, squareIdBeingDragged+1,
-                        squareIdBeingDragged-width, squareIdBeingDragged+width];
-      let validMove = validMoves.includes(squareIdBeingReplaced);
-      if (squareIdBeingReplaced && validMove) {
-        squareIdBeingReplaced = null;
-      } else if (squareIdBeingReplaced && !validMove) {
-        squares[squareIdBeingReplaced].textContent = colorBeingReplaced;
-        squares[squareIdBeingDragged].textContent = colorBeingDragged;
-      } else squares[squareIdBeingDragged].textContent = colorBeingDragged;
-    }
-
-    function checkRowForThree() {
-      for (let i=0; i<61; i++) {
-        let rowOfThree = [i, i+1, i+2];
-        let decidedFlower = squares[i].textContent;
-        const isBlank = decidedFlower === '';
-        const notValid = [6,7,14,15,22,23,30,31,38,39,46,47,54,55];
-        if (notValid.includes(i)) continue;
-
-        if(rowOfThree.every(index => squares[index].textContent === decidedFlower && !isBlank)) {
-          rowOfThree.forEach(index => {
-            squares[index].classList.add('matched');
-            setTimeout(()=> squares[index].textContent='', 400);
-          });
-          updateScore(110);
-        }
-      }
-    }
-
-    function checkColumnForThree() {
-      for (let i=0; i<47; i++) {
-        let columnOfThree = [i, i+width, i+width*2];
-        let decidedFlower = squares[i].textContent;
-        const isBlank = decidedFlower === '';
-        if(columnOfThree.every(index => squares[index].textContent === decidedFlower && !isBlank)) {
-          columnOfThree.forEach(index => {
-            squares[index].classList.add('matched');
-            setTimeout(()=> squares[index].textContent='', 400);
-          });
-          updateScore(110);
-        }
-      }
-    }
-
-    function moveDown() {
-      for (let i=0; i<55; i++) {
-        if(squares[i+width].textContent === '') {
-          squares[i+width].textContent = squares[i].textContent;
-          squares[i].textContent = '';
-          squares[i+width].classList.add('fall');
-        }
-        if (i < width && squares[i].textContent === '') {
-          squares[i].textContent = flowers[Math.floor(Math.random()*flowers.length)];
-        }
-      }
-    }
-
-    function updateScore(points) {
-      score += points;
-      let percent = Math.min((score/targetScore)*100,100);
-      progress.style.width = percent + '%';
-      if(score >= targetScore) {
-        victory.style.display = 'flex';
-      }
-    }
-
-    window.setInterval(function(){
-      checkRowForThree();
-      checkColumnForThree();
-      moveDown();
-    }, 200);
-  </script>
-</body>
-</html>
+export default CandyCrushGame;
